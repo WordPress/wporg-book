@@ -120,4 +120,33 @@ body.page-volume-landing {
 	.content-area {
 		background-color: #fff;
 	}
+
+	.main-navigation {
+		a {
+			font-weight: 400;
+			text-transform: none;
+			background-color: transparent;
+			border: none;
+			box-shadow: none;
+			color: #3858e9;
+			--local--focus--border-color: #3858e9;
+			--local--focus--outline-color: #fff;
+		}
+
+		.is-primary a {
+			color: #fff;
+			background-color: #3858e9;
+			--local--focus--border-color: #fff;
+			--local--focus--outline-color: #3858e9;
+		}
+
+		@media screen and ( max-width: 599px ) {
+			li:first-of-type a {
+				color: #fff;
+				background-color: #3858e9;
+				--local--focus--border-color: #fff;
+				--local--focus--outline-color: #3858e9;
+			}
+		}
+	}
 }

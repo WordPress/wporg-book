@@ -12,7 +12,13 @@ a {
 	}
 
 	&:focus {
-		outline: thin dotted;
+		outline: none;
+	}
+
+	&:focus-visible {
+		box-shadow: 0 0 0 1.5px var(--local--focus--border-color, transparent) !important;
+		outline: 1.5px solid var(--local--focus--outline-color, currentColor);
+		outline-offset: 1.5px;
 	}
 
 	&:hover,

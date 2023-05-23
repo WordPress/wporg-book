@@ -33,6 +33,8 @@
 	background-color: $color__background-primary-button;
 	border-color: $color__border-primary-button;
 	box-shadow: 0 1px 0 $color__border-primary-button;
+	--local--focus--outline-color: #{$color__background-primary-button};
+	--local--focus--border-color: #fff;
 
 	&:hover,
 	&:focus {
