@@ -33,7 +33,7 @@ while ( have_posts() ) :
 			<?php
 			wp_nav_menu(
 				array(
-					'theme_location' => 'home',
+					'theme_location' => 'vol-2-home',
 					'menu_id' => 'home-menu',
 				)
 			);

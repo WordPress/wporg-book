@@ -42,8 +42,10 @@ function setup_theme() {
 	// This theme uses wp_nav_menu() in one location.
 	register_nav_menus(
 		array(
-			'home'    => esc_html__( 'Home', 'wporg-book' ),
-			'primary' => esc_html__( 'Primary', 'wporg-book' ),
+			'home' => esc_html__( 'Vol 1 Landing', 'wporg-book' ),
+			'primary' => esc_html__( 'Vol 1 Primary', 'wporg-book' ),
+			'vol-2-home' => esc_html__( 'Vol 2 Landing', 'wporg-book' ),
+			'vol-2-primary' => esc_html__( 'Vol 2 Primary', 'wporg-book' ),
 		)
 	);
 
