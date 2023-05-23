@@ -1,0 +1,7 @@
+$size__site-header: 1000px;
+$size__site-main: 775px;
+
+html {
+	/* stylelint-disable-next-line length-zero-no-unit -- Needs unit for calc. */
+	--wp-global-header-height: 0px !important;
+}

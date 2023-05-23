@@ -1,0 +1,61 @@
+{
+	"name": "wporg/wporg-book",
+	"description": "",
+	"homepage": "https://wordpress.org",
+	"license": "GPL-2.0-or-later",
+	"support": {
+		"issues": "https://github.com/WordPress/wporg-book/issues"
+	},
+	"config": {
+		"platform": {
+			"php": "7.4"
+		},
+		"allow-plugins": {
+			"composer/installers": true,
+			"dealerdirect/phpcodesniffer-composer-installer": true
+		},
+		"preferred-install": {
+			"wporg/*": "source"
+		}
+	},
+	"extra": {
+		"installer-paths": {
+			"wp-content/mu-plugins/{$name}/": [
+				"type:wordpress-muplugin"
+			],
+			"wp-content/plugins/{$name}/": [
+				"type:wordpress-plugin"
+			],
+			"wp-content/themes/{$name}/": [
+				"type:wordpress-theme"
+			]
+		}
+	},
+	"repositories": [
+		{
+			"type": "composer",
+			"url": "https://wpackagist.org/"
+		},
+		{
+			"type": "vcs",
+			"url": "git@github.com:WordPress/wporg-repo-tools.git"
+		},
+		{
+			"type": "vcs",
+			"url": "git@github.com:WordPress/wporg-mu-plugins.git"
+		}
+	],
+	"require": {},
+	"require-dev": {
+        "composer/installers": "~1.0",
+		"dealerdirect/phpcodesniffer-composer-installer": "^0.7.0",
+		"phpcompatibility/phpcompatibility-wp": "*",
+		"wporg/wporg-repo-tools": "dev-trunk",
+		"wporg/wporg-mu-plugins": "dev-build",
+        "wp-coding-standards/wpcs": "2.*"
+	},
+	"scripts": {
+		"format": "phpcbf -p",
+		"lint": "phpcs"
+	}
+}

@@ -1,0 +1,23 @@
+.site-branding,
+.site-info {
+	margin: 0 auto;
+	max-width: $size__site-header;
+}
+
+.site-main {
+	margin: 0 auto 100px;
+	padding: 0 30px;
+	max-width: $size__site-main;
+}
+
+.site-footer {
+	border-top: 1px solid $color__border;
+	padding-left: 30px;
+	padding-right: 30px;
+}
+
+/*--------------------------------------------------------------
+## Posts and pages
+--------------------------------------------------------------*/
+/* stylelint-disable-next-line no-invalid-position-at-import-rule */
+@import "primary/posts-and-pages";

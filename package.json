@@ -1,0 +1,25 @@
+{
+  "name": "wporg-book",
+  "version": "0.1.0",
+  "description": "",
+  "author": "",
+  "license": "GPL-2.0+",
+  "scripts": {
+    "wp-env": "wp-env",
+    "build": "postcss wp-content/themes/wporg-book/sass/style.scss --output=wp-content/themes/wporg-book/style.css",
+    "start": "postcss wp-content/themes/wporg-book/sass/style.scss --output=wp-content/themes/wporg-book/style.css --watch",
+    "lint:css": "stylelint wp-content/themes/wporg-book/sass/*",
+    "lint:php": "composer run lint wp-content/themes/wporg-book"
+  },
+  "devDependencies": {
+    "@csstools/postcss-sass": "^5.0.1",
+    "@wordpress/env": "^7.0.0",
+    "@wordpress/prettier-config": "^2.16.0",
+    "@wordpress/stylelint-config": "^21.16.0",
+    "autoprefixer": "^10.4.14",
+    "postcss": "^8.4.23",
+    "postcss-cli": "^10.1.0",
+    "prettier": "npm:wp-prettier@2.8.5",
+    "stylelint": "^14.2.0"
+  }
+}

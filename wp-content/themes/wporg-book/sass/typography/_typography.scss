@@ -1,0 +1,21 @@
+body,
+button,
+input,
+select,
+textarea {
+	color: $color__text-main;
+	font-family: $font__main;
+
+	@include font-size( 20 );
+	line-height: $font__line-height-body;
+}
+
+body.home {
+	text-rendering: optimizeLegibility;
+	-webkit-font-smoothing: antialiased;
+}
+
+/* stylelint-disable-next-line no-invalid-position-at-import-rule */
+@import "headings";
+/* stylelint-disable-next-line no-invalid-position-at-import-rule */
+@import "copy";

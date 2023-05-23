@@ -1,0 +1,36 @@
+.wp-caption {
+	margin: 0 auto 30px;
+	max-width: 100%;
+
+	img[class*="wp-image-"] {
+		display: block;
+	}
+
+	img {
+		margin: 60px auto 0;
+	}
+}
+
+.part-cover .entry-content img {
+	margin: 0;
+}
+
+@media screen and ( min-width: 1050px ) {
+	.wp-caption img,
+	.part-cover .entry-content img {
+		width: 1000px !important;
+		max-width: 1000px !important;
+		margin-left: -112px;
+		margin-right: -113px;
+	}
+}
+
+.wp-caption-text {
+	margin: 20px 0 60px;
+	font-family: $font__sans;
+
+	@include font-size( 14 );
+	font-weight: 300;
+	text-align: center;
+	color: $color__text-meta;
+}
