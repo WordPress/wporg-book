@@ -4,7 +4,7 @@ p {
 
 	&:first-of-type,
 	.part-cover .entry-content &,
-	.home & {
+	.page-volume-landing & {
 		text-indent: 0;
 	}
 }
@@ -78,31 +78,6 @@ ins {
 
 big {
 	font-size: 125%;
-}
-
-.entry-content {
-	.home & {
-		margin: 0 auto;
-		max-width: $size__site-header;
-		font-family: $font__sans;
-
-		@include font-size( 28 );
-		font-weight: 100;
-		color: #fff;
-
-		p {
-			margin-bottom: 40px;
-		}
-
-		@media screen and ( max-width: 320px ) {
-
-			@include font-size( 18 );
-
-			p {
-				margin-bottom: 20px;
-			}
-		}
-	}
 }
 
 .site-footer {

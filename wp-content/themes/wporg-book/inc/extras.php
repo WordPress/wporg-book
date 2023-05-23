@@ -9,6 +9,7 @@ namespace WordPressdotorg\Theme\Book;
  * Actions & fitlers.
  */
 add_filter( 'post_class', __NAMESPACE__ . '\post_classes' );
+add_filter( 'body_class', __NAMESPACE__ . '\body_classes' );
 add_action( 'init', __NAMESPACE__ . '\register_book_meta' );
 add_filter( 'manage_post_posts_columns', __NAMESPACE__ . '\add_posts_columns' );
 add_action( 'manage_post_posts_custom_column', __NAMESPACE__ . '\handle_custom_column', 10, 2 );
@@ -35,6 +36,21 @@ function post_classes( $classes ) {
 	return $classes;
 }
 
+/**
+ * Adds custom classes to the array of body classes.
+ *
+ * @param array $classes Classes for the body element.
+ * @return array
+ */
+function body_classes( $classes ) {
+	global $post;
+	if ( is_front_page() || is_page( 'milestones' ) ) {
+		$classes[] = 'page-volume-landing';
+		$classes[] = 'page-' . $post->post_name;
+	}
+
+	return $classes;
+}
 
 /**
  * Register the volume, part, & chapter meta fields.

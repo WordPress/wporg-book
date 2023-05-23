@@ -68,25 +68,6 @@
 	}
 }
 
-.home {
-	.content-area {
-		background-color: $color__background-header;
-		padding-left: 30px;
-		padding-right: 30px;
-	}
-
-	hr {
-		margin: 0 -30px;
-		background-color: $color__border;
-	}
-
-	.main-navigation {
-		margin: 0 auto;
-		padding: 30px 0;
-		max-width: $size__site-header;
-	}
-}
-
 .search-results {
 	article.post {
 		margin-bottom: 70px;

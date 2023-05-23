@@ -34,7 +34,7 @@
 	}
 
 	@media screen and ( max-width: 599px ) {
-		.home & li:first-of-type a {
+		.page-volume-landing & li:first-of-type a {
 
 			@include button-primary;
 		}
