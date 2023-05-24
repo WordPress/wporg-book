@@ -1,0 +1,44 @@
+name: Build and push to build branch.
+
+on:
+    push:
+        branches: [trunk]
+
+jobs:
+    build:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b # v3.0.2
+
+            - name: Install NodeJS
+              uses: actions/setup-node@eeb10cff27034e7acf239c5d29f62154018672fd # v3.3.0
+              with:
+                  node-version-file: '.nvmrc'
+                  cache: 'npm'
+
+            - name: Install all dependencies # Only npm, composer only used for local env/linting.
+              run: npm install
+
+            - name: Build
+              run: npm run build
+
+            - name: Trim the repo down to just the theme
+              run: |
+                  rm -rf wp-content/themes/wporg-book/sass
+                  mv wp-content/themes/wporg-book $RUNNER_TEMP
+                  git rm -rfq .
+                  rm -rf *
+                  mv $RUNNER_TEMP/wporg-book/* .
+
+            - name: Add all the theme files
+              run: |
+                  git add * --force
+
+            - name: Commit and push
+              uses: actions-js/push@a52398fac807b0c1e5f1492c969b477c8560a0ba # 1.3
+              with:
+                  github_token: ${{ secrets.GITHUB_TOKEN }}
+                  branch: build
+                  force: true
+                  message: 'Build: ${{ github.sha }}'
