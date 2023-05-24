@@ -36,7 +36,7 @@ jobs:
                   git add * --force
 
             - name: Commit and push
-              uses: actions-js/push@a52398fac807b0c1e5f1492c969b477c8560a0ba # 1.3
+              uses: actions-js/push@156f2b10c3aa000c44dbe75ea7018f32ae999772 # 1.4
               with:
                   github_token: ${{ secrets.GITHUB_TOKEN }}
                   branch: build
