@@ -6,9 +6,9 @@
  */
 
 $volume = (int) get_post_meta( get_the_ID(), 'mb_vol', true );
-$menu_location = 'primary';
-if ( 2 === $volume ) {
-	$menu_location = 'vol-2-primary';
+$menu_location = 'vol-2-primary';
+if ( 1 === $volume ) {
+	$menu_location = 'primary';
 }
 
 ?><!DOCTYPE html>
