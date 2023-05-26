@@ -5,6 +5,10 @@
  * Contains the closing of the #content div and all content after.
  */
 
+$book_github_url = 'https://github.com/WordPress/wp20-book';
+if ( 1 === (int) get_post_meta( get_the_ID(), 'mb_vol', true ) ) {
+	$book_github_url = 'https://github.com/WordPress/book/';
+}
 ?>
 
 	</div><!-- #content -->
@@ -19,7 +23,7 @@
 			// phpcs:disable
 			printf(
 				__( 'Copyright GPLv2 and Creative Commons Sharealike. <a href="%s">Help make this book better</a>.', 'wporg-book' ),
-				'https://github.com/WordPress/book/'
+				$book_github_url
 			);
 			// phpcs:enable
 			?>
