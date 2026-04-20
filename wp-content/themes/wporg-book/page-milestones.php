@@ -28,19 +28,6 @@ while ( have_posts() ) :
 		</div><!-- .entry-content -->
 	</div>
 
-	<div id="primary" class="content-area">
-		<nav class="main-navigation" role="navigation">
-			<?php
-			wp_nav_menu(
-				array(
-					'theme_location' => 'home',
-					'menu_id' => 'home-menu',
-				)
-			);
-			?>
-		</nav><!-- #site-navigation -->
-	</div><!-- #primary -->
-
 <?php endwhile; // End of the loop.
 get_sidebar();
 get_footer();
