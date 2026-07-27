@@ -23,6 +23,8 @@ jobs:
                   cache: 'npm'
 
             - name: Install dependencies & setup configs
+              env:
+                  COMPOSER_AUTH: '{"github-oauth": {"github.com": "${{ secrets.GITHUB_TOKEN }}"}}'
               run: |
                   npm install
                   composer install || composer update wporg/*
