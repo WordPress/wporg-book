@@ -8,7 +8,7 @@
 	},
 	"config": {
 		"platform": {
-			"php": "7.4"
+			"php": "8.4"
 		},
 		"allow-plugins": {
 			"composer/installers": true,
@@ -45,14 +45,13 @@
 			"url": "git@github.com:WordPress/wporg-mu-plugins.git"
 		}
 	],
-	"require": {},
 	"require-dev": {
         "composer/installers": "~1.0",
 		"dealerdirect/phpcodesniffer-composer-installer": "^0.7.0",
 		"phpcompatibility/phpcompatibility-wp": "*",
 		"wporg/wporg-repo-tools": "dev-trunk",
 		"wporg/wporg-mu-plugins": "dev-build",
-        "wp-coding-standards/wpcs": "2.*"
+        "wp-coding-standards/wpcs": "^3.4.1"
 	},
 	"scripts": {
 		"format": "phpcbf -p",

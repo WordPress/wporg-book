@@ -17,12 +17,14 @@ jobs:
               uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b # v3.0.2
 
             - name: Install NodeJS
-              uses: actions/setup-node@eeb10cff27034e7acf239c5d29f62154018672fd # v3.3.0
+              uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
               with:
                   node-version-file: '.nvmrc'
                   cache: 'npm'
 
             - name: Install dependencies & setup configs
+              env:
+                  COMPOSER_AUTH: '{"github-oauth": {"github.com": "${{ secrets.GITHUB_TOKEN }}"}}'
               run: |
                   npm install
                   composer install || composer update wporg/*
