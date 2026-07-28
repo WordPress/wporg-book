@@ -58,7 +58,7 @@ function get_next_chapter( $post = 0 ) {
 		return false;
 	}
 	$place = absint( $toc[ $post->ID ]['order'] );
-	$result = wp_list_filter( $toc, [ 'order' => $place + 1 ] );
+	$result = wp_list_filter( $toc, array( 'order' => $place + 1 ) );
 	if ( count( $result ) < 1 ) {
 		return false;
 	}
@@ -100,7 +100,7 @@ function build_table_of_contents( $vol = 1 ) {
 	// Ensure this list is sorted by part/chapter order.
 	usort(
 		$chapters,
-		function( $a, $b ) {
+		function ( $a, $b ) {
 			if ( $a['part'] === $b['part'] ) {
 				return ( $a['chapter'] < $b['chapter'] ) ? -1 : 1;
 			}
