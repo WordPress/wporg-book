@@ -15,11 +15,11 @@
     "@csstools/postcss-sass": "^5.0.1",
     "@wordpress/env": "^7.0.0",
     "@wordpress/prettier-config": "^2.16.0",
-    "@wordpress/stylelint-config": "^21.16.0",
+    "@wordpress/stylelint-config": "^24.0.0",
     "autoprefixer": "^10.4.14",
     "postcss": "^8.4.23",
     "postcss-cli": "^10.1.0",
     "prettier": "npm:wp-prettier@2.8.5",
-    "stylelint": "^14.2.0"
+    "stylelint": "^16.8.2"
   }
 }
