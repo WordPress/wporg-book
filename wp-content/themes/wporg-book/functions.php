@@ -125,3 +125,10 @@ require get_template_directory() . '/inc/template-tags.php';
  * Custom functions that act independently of the theme templates.
  */
 require get_template_directory() . '/inc/extras.php';
+
+/**
+ * Chapter importer, which needs the wporg-markdown plugin.
+ */
+if ( class_exists( '\\WordPressdotorg\\Markdown\\Importer' ) ) {
+	require get_template_directory() . '/inc/import-chapters.php';
+}
