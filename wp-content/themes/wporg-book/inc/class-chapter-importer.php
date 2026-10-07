@@ -12,6 +12,8 @@
  * The scheduled import stays off until the `wporg_book_import_enabled`
  * option is set, so the first run can be checked with `wp book import
  * --dry-run` before anything changes.
+ *
+ * @package WordPressdotorg\Theme\Book
  */
 
 namespace WordPressdotorg\Theme\Book;
@@ -19,10 +21,15 @@ namespace WordPressdotorg\Theme\Book;
 use WordPressdotorg\Markdown\Importer;
 use WP_CLI;
 use WP_Error;
+use WP_Query;
 use WPCom_GHF_Markdown_Parser;
 
 /**
  * Keeps chapter posts in step with the Markdown in WordPress/library.
+ *
+ * Uses the shared importer's Markdown conversion and post meta keys, but
+ * replaces its manifest handling: that version creates posts for unmatched
+ * entries, writes any meta the manifest lists, and exits WP-CLI on errors.
  */
 class Chapter_Importer extends Importer {
 
@@ -42,6 +49,11 @@ class Chapter_Importer extends Importer {
 	const CRON_HOOK = 'wporg_book_import_chapters';
 
 	/**
+	 * Chapter sources must live in this repository.
+	 */
+	const SOURCE_BASE = 'https://raw.githubusercontent.com/WordPress/library/';
+
+	/**
 	 * Bump when the Markdown-to-HTML transform changes, so every chapter is
 	 * converted again even if its file on GitHub has not changed.
 	 */
@@ -55,18 +67,12 @@ class Chapter_Importer extends Importer {
 	protected $transform_meta_key = 'wporg_book_transform_version';
 
 	/**
-	 * Post IDs matched while reading the manifest.
-	 *
-	 * @var int[]
-	 */
-	protected $resolved_ids = array();
-
-	/**
 	 * Hooks the importer up.
 	 */
 	public function init() {
 		add_action( 'init', array( $this, 'schedule' ) );
 		add_action( self::CRON_HOOK, array( $this, 'run' ) );
+		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_editor_warning' ) );
 		add_action( 'edit_form_top', array( $this, 'render_editor_warning' ) );
 
 		if ( defined( 'WP_CLI' ) && WP_CLI ) {
@@ -75,10 +81,7 @@ class Chapter_Importer extends Importer {
 	}
 
 	/**
-	 * Base URL stripped from permalinks when matching posts to manifest keys.
-	 *
-	 * Chapter permalinks are dated, so keys never match on the full path and
-	 * the parent class falls back to matching on the post slug.
+	 * Base URL for the parent class. Unused, since manifest matching is by slug.
 	 *
 	 * @return string
 	 */
@@ -97,7 +100,7 @@ class Chapter_Importer extends Importer {
 		 *
 		 * @param string $url Manifest URL.
 		 */
-		return apply_filters( 'wporg_book_manifest_url', 'https://raw.githubusercontent.com/WordPress/library/trunk/manifest.json' );
+		return apply_filters( 'wporg_book_manifest_url', self::SOURCE_BASE . 'trunk/manifest.json' );
 	}
 
 	/**
@@ -125,28 +128,35 @@ class Chapter_Importer extends Importer {
 	/**
 	 * Reads the manifest, then imports the chapters it lists.
 	 *
-	 * Stops before touching any chapter if the manifest can't be read, so a
-	 * bad manifest never leaves the book half updated.
+	 * Stops before touching any chapter if the manifest can't be read or
+	 * fails validation, so a bad manifest never leaves the book half updated.
 	 *
 	 * @param bool $force Convert every chapter even if unchanged on GitHub.
-	 * @return array|WP_Error Counts of updated, unchanged and failed chapters.
+	 * @return array|WP_Error Counts of updated, unchanged, failed and skipped chapters.
 	 */
 	public function run( $force = false ) {
-		$this->resolved_ids = array();
-
-		$result = $this->import_manifest();
-		if ( is_wp_error( $result ) ) {
-			return $result;
+		$chapters = $this->resolve_manifest();
+		if ( is_wp_error( $chapters ) ) {
+			$this->log( $chapters->get_error_message(), 'warning' );
+			return $chapters;
 		}
-
-		update_option( self::IDS_OPTION, $this->resolved_ids, false );
 
 		$counts = array(
 			'updated'   => 0,
 			'unchanged' => 0,
 			'failed'    => 0,
+			'skipped'   => count( $chapters['missing'] ),
 		);
-		foreach ( $this->resolved_ids as $post_id ) {
+		foreach ( $chapters['missing'] as $slug ) {
+			$this->log( "No published post with the slug '{$slug}', skipped.", 'warning' );
+		}
+
+		foreach ( $chapters['found'] as $post_id => $doc ) {
+			$this->save_manifest_entry( $post_id, $doc );
+		}
+		update_option( self::IDS_OPTION, array_keys( $chapters['found'] ), false );
+
+		foreach ( array_keys( $chapters['found'] ) as $post_id ) {
 			$result = $this->update_post_from_markdown_source( $post_id, $force );
 			if ( is_wp_error( $result ) ) {
 				++$counts['failed'];
@@ -163,37 +173,95 @@ class Chapter_Importer extends Importer {
 	}
 
 	/**
-	 * Never creates posts.
+	 * Fetches and validates the manifest, and finds the post for each entry.
 	 *
-	 * The parent class creates a post for any manifest entry it can't match,
-	 * so a typo in the manifest would publish a stray post. New chapters get
-	 * their post made by hand, then a manifest entry with its slug.
+	 * Nothing is written here. Every entry must have a slug, a title, and a
+	 * source inside the library repo, or the whole manifest is rejected.
 	 *
-	 * @param array $doc      Manifest entry.
-	 * @param array $manifest Whole manifest.
-	 * @return false
+	 * @return array|WP_Error 'found' (post ID => entry, with the source made
+	 *                        absolute) and 'missing' (slugs with no post).
 	 */
-	protected function process_manifest_doc( $doc, $manifest ) {
-		$this->log( "No published post with the slug '{$doc['slug']}', skipped.", 'warning' );
-		return false;
+	public function resolve_manifest() {
+		$response = wp_safe_remote_get( $this->get_manifest_url() );
+		if ( is_wp_error( $response ) ) {
+			return $response;
+		}
+		if ( 200 !== wp_remote_retrieve_response_code( $response ) ) {
+			return new WP_Error( 'invalid-http-code', 'The manifest returned HTTP ' . wp_remote_retrieve_response_code( $response ) . '.' );
+		}
+
+		$manifest = json_decode( wp_remote_retrieve_body( $response ), true );
+		if ( ! is_array( $manifest ) || ! $manifest ) {
+			return new WP_Error( 'invalid-manifest', 'The manifest is not a JSON object.' );
+		}
+
+		$chapters = array(
+			'found'   => array(),
+			'missing' => array(),
+		);
+		foreach ( $manifest as $key => $doc ) {
+			if ( ! is_array( $doc ) || ! isset( $doc['slug'], $doc['title'], $doc['markdown_source'] )
+				|| ! is_string( $doc['slug'] ) || ! is_string( $doc['title'] ) || ! is_string( $doc['markdown_source'] )
+			) {
+				return new WP_Error( 'invalid-manifest', "Manifest entry '{$key}' needs string slug, title and markdown_source." );
+			}
+
+			$source = $this->generate_markdown_source_url( $doc['markdown_source'] );
+			if ( 0 !== strpos( $source, self::SOURCE_BASE ) || false !== strpos( $source, '..' ) ) {
+				return new WP_Error( 'invalid-manifest', "Manifest entry '{$key}' points outside WordPress/library." );
+			}
+
+			$post_id = $this->find_chapter( $doc['slug'] );
+			if ( ! $post_id ) {
+				$chapters['missing'][] = $doc['slug'];
+				continue;
+			}
+
+			$chapters['found'][ $post_id ] = array(
+				'slug'            => $doc['slug'],
+				'title'           => $doc['title'],
+				'markdown_source' => $source,
+			);
+		}
+
+		return $chapters;
 	}
 
 	/**
-	 * Records each matched post, and forgets its ETag when its source moves.
+	 * Finds the published post with a chapter's slug.
 	 *
-	 * @param int   $post_id Matched post ID.
-	 * @param array $doc     Manifest entry.
-	 * @return bool True if the post's Markdown source changed.
+	 * @param string $slug Post slug.
+	 * @return int Post ID, or 0 if there is none.
 	 */
-	protected function update_post_from_manifest_doc( $post_id, $doc ) {
-		$this->resolved_ids[] = (int) $post_id;
+	protected function find_chapter( $slug ) {
+		$query = new WP_Query(
+			array(
+				'post_type'      => $this->get_post_type(),
+				'post_status'    => 'publish',
+				'name'           => $slug,
+				'fields'         => 'ids',
+				'posts_per_page' => 1,
+				'no_found_rows'  => true,
+			)
+		);
 
-		$changed = parent::update_post_from_manifest_doc( $post_id, $doc );
-		if ( $changed ) {
+		return $query->posts ? (int) $query->posts[0] : 0;
+	}
+
+	/**
+	 * Stores a chapter's manifest entry and source, and nothing else.
+	 *
+	 * Forgets the stored ETag when the source moves, so the new file is read.
+	 *
+	 * @param int   $post_id Post ID.
+	 * @param array $doc     Validated manifest entry.
+	 */
+	protected function save_manifest_entry( $post_id, $doc ) {
+		update_post_meta( $post_id, $this->manifest_entry_meta_key, $doc );
+
+		if ( update_post_meta( $post_id, $this->meta_key, esc_url_raw( $doc['markdown_source'] ) ) ) {
 			delete_post_meta( $post_id, $this->etag_meta_key );
 		}
-
-		return $changed;
 	}
 
 	/**
@@ -209,11 +277,18 @@ class Chapter_Importer extends Importer {
 	}
 
 	/**
+	 * Reads the manifest through the validated path instead of the parent's.
+	 */
+	public function import_manifest() {
+		$this->run();
+	}
+
+	/**
 	 * Updates one chapter from its Markdown on GitHub.
 	 *
-	 * Replaces the parent method to keep every post field except the content
-	 * and title, apply the title from the manifest even when the file is
-	 * unchanged, and only store the ETag after the post saves.
+	 * Keeps every post field except the content and title, applies the title
+	 * from the manifest even when the file is unchanged, and only stores the
+	 * ETag after the post saves.
 	 *
 	 * @param int  $post_id Post ID.
 	 * @param bool $force   Ignore the stored ETag.
@@ -263,6 +338,9 @@ class Chapter_Importer extends Importer {
 		if ( is_wp_error( $source ) ) {
 			return $source;
 		}
+		if ( 0 !== strpos( $source, self::SOURCE_BASE ) ) {
+			return new WP_Error( 'invalid-source', 'Markdown source is outside WordPress/library.' );
+		}
 
 		if ( ! class_exists( 'WPCom_GHF_Markdown_Parser' ) && defined( 'JETPACK__PLUGIN_DIR' ) ) {
 			include JETPACK__PLUGIN_DIR . '/_inc/lib/markdown.php';
@@ -271,14 +349,17 @@ class Chapter_Importer extends Importer {
 			return new WP_Error( 'missing-jetpack-markdown', 'Jetpack Markdown is missing on system.' );
 		}
 
-		$args = array( 'headers' => array() );
+		$args = array(
+			'headers'     => array(),
+			'redirection' => 0,
+		);
 		$etag = get_post_meta( $post_id, $this->etag_meta_key, true );
 		$same = (int) get_post_meta( $post_id, $this->transform_meta_key, true ) === self::TRANSFORM_VERSION;
 		if ( $etag && $same && ! $force ) {
 			$args['headers']['If-None-Match'] = $etag;
 		}
 
-		$response = wp_remote_get( $source, $args );
+		$response = wp_safe_remote_get( $source, $args );
 		if ( is_wp_error( $response ) ) {
 			return $response;
 		}
@@ -348,26 +429,40 @@ class Chapter_Importer extends Importer {
 		return preg_replace_callback(
 			'/(<img\s[^>]*src=")([^"]+)"/i',
 			function ( $m ) use ( $source ) {
-				return $m[1] . esc_url( $this->resolve_url( $m[2], $source ) ) . '"';
+				return $m[1] . esc_url( $this->resolve_url( html_entity_decode( $m[2] ), $source ) ) . '"';
 			},
 			$html
 		);
 	}
 
 	/**
-	 * Resolves a path relative to the Markdown file it appears in.
+	 * Resolves an image path relative to the Markdown file it appears in.
+	 *
+	 * Absolute URLs pass through. A path starting with `/` is relative to
+	 * the root of the library repo at the same branch, as on GitHub.
 	 *
 	 * @param string $path   Path from the Markdown, such as `../Resources/a.png`.
 	 * @param string $source URL of the Markdown file.
 	 * @return string Absolute URL.
 	 */
 	protected function resolve_url( $path, $source ) {
-		if ( preg_match( '#^([a-z]+:)?//#i', $path ) ) {
+		if ( preg_match( '#^([a-z][a-z0-9+.-]*:|//)#i', $path ) ) {
 			return $path;
 		}
 
-		$base  = strtok( $source, '?' );
+		$suffix = '';
+		if ( preg_match( '/[?#].*$/s', $path, $m ) ) {
+			$suffix = $m[0];
+			$path   = substr( $path, 0, -strlen( $suffix ) );
+		}
+
+		// Directory of the Markdown file, or the branch root for root-relative paths.
+		$base  = strtok( $source, '?#' );
 		$parts = explode( '/', substr( $base, 0, strrpos( $base, '/' ) ) );
+		if ( '/' === substr( $path, 0, 1 ) ) {
+			$parts = array_slice( explode( '/', $base ), 0, 6 ); // https:, '', host, WordPress, library, branch.
+		}
+
 		foreach ( explode( '/', $path ) as $segment ) {
 			if ( '..' === $segment ) {
 				array_pop( $parts );
@@ -376,7 +471,7 @@ class Chapter_Importer extends Importer {
 			}
 		}
 
-		return implode( '/', $parts );
+		return implode( '/', $parts ) . $suffix;
 	}
 
 	/**
@@ -392,25 +487,63 @@ class Chapter_Importer extends Importer {
 	}
 
 	/**
-	 * Tells editors that changes to an imported chapter will be overwritten.
+	 * GitHub page for editing an imported chapter.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return string URL, or empty if the post is not an imported chapter.
+	 */
+	protected function get_github_link( $post_id ) {
+		if ( ! in_array( (int) $post_id, (array) get_option( self::IDS_OPTION, array() ), true ) ) {
+			return '';
+		}
+
+		$source = $this->get_markdown_source( $post_id );
+		if ( is_wp_error( $source ) || 0 !== strpos( $source, self::SOURCE_BASE ) ) {
+			return '';
+		}
+
+		return 'https://github.com/WordPress/library/blob/' . substr( $source, strlen( self::SOURCE_BASE ) );
+	}
+
+	/**
+	 * Warns block editor users that edits to an imported chapter get overwritten.
+	 */
+	public function enqueue_editor_warning() {
+		$post = get_post();
+		$link = $post ? $this->get_github_link( $post->ID ) : '';
+		if ( ! $link ) {
+			return;
+		}
+
+		wp_register_script( 'wporg-book-import-notice', false, array( 'wp-data', 'wp-notices', 'wp-dom-ready' ), '1', true );
+		wp_enqueue_script( 'wporg-book-import-notice' );
+		wp_add_inline_script(
+			'wporg-book-import-notice',
+			sprintf(
+				'wp.domReady( function() { wp.data.dispatch( "core/notices" ).createWarningNotice( %s, { isDismissible: false, actions: [ { label: %s, url: %s } ] } ); } );',
+				wp_json_encode( __( 'This chapter is imported from GitHub, and edits made here will be overwritten.', 'wporg-book' ) ),
+				wp_json_encode( __( 'Edit it on GitHub', 'wporg-book' ) ),
+				wp_json_encode( esc_url_raw( $link ) )
+			)
+		);
+	}
+
+	/**
+	 * The same warning for the classic editor.
 	 *
 	 * @param \WP_Post $post Post being edited.
 	 */
 	public function render_editor_warning( $post ) {
-		if ( ! in_array( $post->ID, (array) get_option( self::IDS_OPTION, array() ), true ) ) {
+		$link = $this->get_github_link( $post->ID );
+		if ( ! $link ) {
 			return;
 		}
 
-		$source = $this->get_markdown_source( $post->ID );
-		$link   = is_wp_error( $source ) ? '' : str_replace( 'https://raw.githubusercontent.com/WordPress/library/', 'https://github.com/WordPress/library/blob/', $source );
-
 		printf(
-			'<div class="notice notice-warning inline"><p>%s</p></div>',
-			sprintf(
-				/* translators: %s: URL of the chapter on GitHub. */
-				wp_kses_post( __( 'This chapter is imported from GitHub, and edits made here will be overwritten. <a href="%s">Edit it on GitHub</a> instead.', 'wporg-book' ) ),
-				esc_url( $link )
-			)
+			'<div class="notice notice-warning inline"><p>%s <a href="%s">%s</a></p></div>',
+			esc_html__( 'This chapter is imported from GitHub, and edits made here will be overwritten.', 'wporg-book' ),
+			esc_url( $link ),
+			esc_html__( 'Edit it on GitHub', 'wporg-book' )
 		);
 	}
 
@@ -435,38 +568,46 @@ class Chapter_Importer extends Importer {
 	 * @param array $assoc_args Flags.
 	 */
 	public function cli_import( $args, $assoc_args ) {
-		$force = ! empty( $assoc_args['force'] );
-
-		if ( empty( $assoc_args['dry-run'] ) ) {
-			$counts = $this->run( $force );
-			if ( is_wp_error( $counts ) ) {
-				WP_CLI::error( $counts->get_error_message() );
-			}
-			WP_CLI::success( sprintf( '%d updated, %d unchanged, %d failed.', $counts['updated'], $counts['unchanged'], $counts['failed'] ) );
+		if ( ! empty( $assoc_args['dry-run'] ) ) {
+			$this->cli_dry_run();
 			return;
 		}
 
-		$manifest = json_decode( (string) wp_remote_retrieve_body( wp_remote_get( $this->get_manifest_url() ) ), true );
-		if ( ! is_array( $manifest ) ) {
-			WP_CLI::error( 'Could not read the manifest.' );
+		$counts = $this->run( ! empty( $assoc_args['force'] ) );
+		if ( is_wp_error( $counts ) ) {
+			WP_CLI::error( $counts->get_error_message() );
 		}
 
-		foreach ( $manifest as $doc ) {
-			$post = get_page_by_path( $doc['slug'], OBJECT, 'post' );
-			if ( ! $post || 'publish' !== $post->post_status ) {
-				WP_CLI::warning( "{$doc['slug']}: no published post with this slug." );
-				continue;
-			}
+		$summary = sprintf( '%d updated, %d unchanged, %d failed, %d skipped.', $counts['updated'], $counts['unchanged'], $counts['failed'], $counts['skipped'] );
+		if ( $counts['failed'] || $counts['skipped'] ) {
+			WP_CLI::error( $summary );
+		}
+		WP_CLI::success( $summary );
+	}
 
-			// Read the source from the manifest, not post meta, since nothing is saved yet.
-			$this->dry_run_source( $post->ID, $this->generate_markdown_source_url( $doc['markdown_source'] ) );
-			$parsed = $this->fetch_chapter_html( $post->ID, true );
-			$this->dry_run_source( $post->ID, null );
+	/**
+	 * Lists what an import would change, without saving anything.
+	 */
+	protected function cli_dry_run() {
+		$chapters = $this->resolve_manifest();
+		if ( is_wp_error( $chapters ) ) {
+			WP_CLI::error( $chapters->get_error_message() );
+		}
+
+		foreach ( $chapters['missing'] as $slug ) {
+			WP_CLI::warning( "{$slug}: no published post with this slug." );
+		}
+
+		foreach ( $chapters['found'] as $post_id => $doc ) {
+			$this->dry_run_source( $post_id, $doc['markdown_source'] );
+			$parsed = $this->fetch_chapter_html( $post_id, true );
+			$this->dry_run_source( $post_id, null );
 			if ( is_wp_error( $parsed ) ) {
 				WP_CLI::warning( "{$doc['slug']}: " . $parsed->get_error_message() );
 				continue;
 			}
 
+			$post = get_post( $post_id );
 			WP_CLI::log(
 				sprintf(
 					'%-45s %s  words %5d -> %5d  title %s',
@@ -524,5 +665,3 @@ class Chapter_Importer extends Importer {
 		}
 	}
 }
-
-( new Chapter_Importer() )->init();

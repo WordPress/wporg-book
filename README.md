@@ -37,7 +37,7 @@ WordPress Book
 
 ## Chapter import
 
-Chapters are imported from the Markdown in [WordPress/library](https://github.com/WordPress/library). Its `manifest.json` maps each chapter file to the slug of an existing post here, and `inc/import-chapters.php` keeps those posts' content and titles in step with the repo. It never creates or deletes posts, and it leaves dates, slugs and the `mb_*` navigation meta alone.
+Chapters are imported from the Markdown in [WordPress/library](https://github.com/WordPress/library). Its `manifest.json` maps each chapter file to the slug of an existing post here, and `inc/class-chapter-importer.php` keeps those posts' content and titles in step with the repo. It never creates or deletes posts, and it leaves dates, slugs and the `mb_*` navigation meta alone.
 
 It needs the `wporg-markdown` plugin from the Meta repo and Jetpack's Markdown library on the site. The scheduled import stays off until it's turned on:
 

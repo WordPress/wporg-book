@@ -130,5 +130,6 @@ require get_template_directory() . '/inc/extras.php';
  * Chapter importer, which needs the wporg-markdown plugin.
  */
 if ( class_exists( '\\WordPressdotorg\\Markdown\\Importer' ) ) {
-	require get_template_directory() . '/inc/import-chapters.php';
+	require get_template_directory() . '/inc/class-chapter-importer.php';
+	( new Chapter_Importer() )->init();
 }
