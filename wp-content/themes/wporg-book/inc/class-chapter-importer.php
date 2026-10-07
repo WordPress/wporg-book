@@ -206,8 +206,12 @@ class Chapter_Importer extends Importer {
 				return new WP_Error( 'invalid-manifest', "Manifest entry '{$key}' needs string slug, title and markdown_source." );
 			}
 
+			if ( '' === trim( $doc['slug'] ) || sanitize_title( $doc['slug'] ) !== $doc['slug'] ) {
+				return new WP_Error( 'invalid-manifest', "Manifest entry '{$key}' has an invalid slug." );
+			}
+
 			$source = $this->generate_markdown_source_url( $doc['markdown_source'] );
-			if ( 0 !== strpos( $source, self::SOURCE_BASE ) || false !== strpos( $source, '..' ) ) {
+			if ( ! $this->is_library_url( $source ) ) {
 				return new WP_Error( 'invalid-manifest', "Manifest entry '{$key}' points outside WordPress/library." );
 			}
 
@@ -225,6 +229,22 @@ class Chapter_Importer extends Importer {
 		}
 
 		return $chapters;
+	}
+
+	/**
+	 * Whether a URL is a file in the WordPress/library repo.
+	 *
+	 * Decodes the path first, so an encoded `..` can't climb out of the repo.
+	 *
+	 * @param string $url URL to check.
+	 * @return bool
+	 */
+	protected function is_library_url( $url ) {
+		$decoded = rawurldecode( $url );
+
+		return 0 === strpos( $decoded, self::SOURCE_BASE )
+			&& false === strpos( $decoded, '..' )
+			&& false === strpos( $decoded, '\\' );
 	}
 
 	/**
@@ -338,7 +358,7 @@ class Chapter_Importer extends Importer {
 		if ( is_wp_error( $source ) ) {
 			return $source;
 		}
-		if ( 0 !== strpos( $source, self::SOURCE_BASE ) ) {
+		if ( ! $this->is_library_url( $source ) ) {
 			return new WP_Error( 'invalid-source', 'Markdown source is outside WordPress/library.' );
 		}
 
@@ -498,7 +518,7 @@ class Chapter_Importer extends Importer {
 		}
 
 		$source = $this->get_markdown_source( $post_id );
-		if ( is_wp_error( $source ) || 0 !== strpos( $source, self::SOURCE_BASE ) ) {
+		if ( is_wp_error( $source ) || ! $this->is_library_url( $source ) ) {
 			return '';
 		}
 
@@ -594,6 +614,7 @@ class Chapter_Importer extends Importer {
 			WP_CLI::error( $chapters->get_error_message() );
 		}
 
+		$problems = count( $chapters['missing'] );
 		foreach ( $chapters['missing'] as $slug ) {
 			WP_CLI::warning( "{$slug}: no published post with this slug." );
 		}
@@ -603,6 +624,7 @@ class Chapter_Importer extends Importer {
 			$parsed = $this->fetch_chapter_html( $post_id, true );
 			$this->dry_run_source( $post_id, null );
 			if ( is_wp_error( $parsed ) ) {
+				++$problems;
 				WP_CLI::warning( "{$doc['slug']}: " . $parsed->get_error_message() );
 				continue;
 			}
@@ -618,6 +640,10 @@ class Chapter_Importer extends Importer {
 					$post->post_title === $doc['title'] ? 'same' : "\"{$post->post_title}\" -> \"{$doc['title']}\""
 				)
 			);
+		}
+
+		if ( $problems ) {
+			WP_CLI::error( "{$problems} chapters could not be checked." );
 		}
 	}
 
