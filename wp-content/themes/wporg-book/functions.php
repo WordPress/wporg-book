@@ -125,7 +125,9 @@ function enqueue_editor_assets() {
  *
  * The site's description only covers Volume 2, so the home page describes both
  * volumes. Jetpack skips images without a height attribute, which rules out
- * every chapter image, so a chapter uses its first image instead.
+ * every chapter image, so a chapter uses its first image instead. Images named
+ * like icon-256x256.jpg are passed over, because site-branding.php strips that
+ * size from og:image and the resulting URL may not exist.
  *
  * @param array $tags Open Graph tags from Jetpack.
  * @return array
@@ -135,15 +137,20 @@ function open_graph_tags( $tags ) {
 		$tags['og:description'] = __( 'The story of WordPress in two volumes: Milestones, from a few lines of code in an apartment above a bar in Corsica to the web\'s most popular platform, and Building Blocks, its second decade from 2013 to 2023.', 'wporg-book' );
 	}
 
-	if ( is_singular( 'post' ) && preg_match( '/<img[^>]+src="([^"]+)"/', get_post_field( 'post_content', get_queried_object_id() ), $match ) ) {
-		$image = esc_url_raw( html_entity_decode( $match[1] ) );
+	if ( is_singular( 'post' ) && preg_match_all( '/<img\s[^>]*?\bsrc="([^"]+)"/', get_post_field( 'post_content', get_queried_object_id() ), $matches ) ) {
+		foreach ( $matches[1] as $src ) {
+			$image = esc_url_raw( html_entity_decode( $src ) );
+			if ( ! $image || preg_match( '/-\d+x\d+\./', $image ) ) {
+				continue;
+			}
 
-		$tags['og:image']     = $image;
-		$tags['twitter:card'] = 'summary_large_image';
-		unset( $tags['og:image:width'], $tags['og:image:height'], $tags['og:image:secure_url'], $tags['og:image:alt'] );
+			$tags['og:image'] = $image;
+			unset( $tags['og:image:width'], $tags['og:image:height'], $tags['og:image:secure_url'], $tags['og:image:alt'] );
 
-		if ( isset( $tags['twitter:image'] ) ) {
-			$tags['twitter:image'] = $image;
+			if ( isset( $tags['twitter:image'] ) ) {
+				$tags['twitter:image'] = $image;
+			}
+			break;
 		}
 	}
 
