@@ -12,6 +12,10 @@ add_action( 'after_setup_theme', __NAMESPACE__ . '\setup_theme' );
 add_action( 'after_setup_theme', __NAMESPACE__ . '\set_content_width', 0 ); // Priority 0 to make it available to lower priority callbacks.
 add_action( 'wp_enqueue_scripts', __NAMESPACE__ . '\enqueue_assets' );
 add_action( 'enqueue_block_assets', __NAMESPACE__ . '\enqueue_editor_assets' );
+add_filter( 'jetpack_open_graph_tags', __NAMESPACE__ . '\open_graph_tags', 20 );
+
+// Enable Jetpack opengraph by default, like the other wordpress.org themes.
+add_filter( 'jetpack_enable_open_graph', '__return_true' );
 
 /**
  * Sets up theme defaults and registers support for various WordPress features.
@@ -114,6 +118,36 @@ function enqueue_editor_assets() {
 		filemtime( __DIR__ . '/js/editor.js' ),
 		false
 	);
+}
+
+/**
+ * Adjust the social sharing tags for the book.
+ *
+ * The site's description only covers Volume 2, so the home page describes both
+ * volumes. Jetpack skips images without a height attribute, which rules out
+ * every chapter image, so a chapter uses its first image instead.
+ *
+ * @param array $tags Open Graph tags from Jetpack.
+ * @return array
+ */
+function open_graph_tags( $tags ) {
+	if ( is_front_page() ) {
+		$tags['og:description'] = __( 'The story of WordPress in two volumes: Milestones, from a few lines of code in an apartment above a bar in Corsica to the web\'s most popular platform, and Building Blocks, its second decade from 2013 to 2023.', 'wporg-book' );
+	}
+
+	if ( is_singular( 'post' ) && preg_match( '/<img[^>]+src="([^"]+)"/', get_post_field( 'post_content', get_queried_object_id() ), $match ) ) {
+		$image = esc_url_raw( html_entity_decode( $match[1] ) );
+
+		$tags['og:image']     = $image;
+		$tags['twitter:card'] = 'summary_large_image';
+		unset( $tags['og:image:width'], $tags['og:image:height'], $tags['og:image:secure_url'], $tags['og:image:alt'] );
+
+		if ( isset( $tags['twitter:image'] ) ) {
+			$tags['twitter:image'] = $image;
+		}
+	}
+
+	return $tags;
 }
 
 /**
