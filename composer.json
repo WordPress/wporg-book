@@ -3,6 +3,8 @@
 	"description": "",
 	"homepage": "https://wordpress.org",
 	"license": "GPL-2.0-or-later",
+	"minimum-stability": "alpha",
+	"prefer-stable": true,
 	"support": {
 		"issues": "https://github.com/WordPress/wporg-book/issues"
 	},
@@ -46,9 +48,9 @@
 		}
 	],
 	"require-dev": {
-        "composer/installers": "~1.0",
-		"dealerdirect/phpcodesniffer-composer-installer": "^0.7.0",
-		"phpcompatibility/phpcompatibility-wp": "*",
+        "composer/installers": "^2.0",
+		"dealerdirect/phpcodesniffer-composer-installer": "^1.0",
+		"phpcompatibility/phpcompatibility-wp": "^3.0@alpha",
 		"wporg/wporg-repo-tools": "dev-trunk",
 		"wporg/wporg-mu-plugins": "dev-build",
         "wp-coding-standards/wpcs": "^3.4.1"
