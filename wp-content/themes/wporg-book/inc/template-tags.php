@@ -16,7 +16,7 @@ function chapter_navigation() {
 	if ( ! $next['part'] ) {
 		/* translators: %1$s Chapter number, %2$s Chapter name */
 		$link_text = sprintf( __( 'Next: Chapter %1$s: %2$s', 'wporg-book' ), $next['chapter'], $next['title'] );
-	} else if ( $next['chapter'] ) {
+	} elseif ( $next['chapter'] ) {
 		/* translators: %1$s Part number, %2$s Chapter number, %3$s Chapter name */
 		$link_text = sprintf( __( 'Next: Part %1$s, Chapter %2$s: %3$s', 'wporg-book' ), $next['part'], $next['chapter'], $next['title'] );
 	} else {
@@ -57,7 +57,7 @@ function get_next_chapter( $post = 0 ) {
 	if ( ! isset( $toc[ $post->ID ] ) ) {
 		return false;
 	}
-	$place = absint( $toc[ $post->ID ]['order'] );
+	$place  = absint( $toc[ $post->ID ]['order'] );
 	$result = wp_list_filter( $toc, array( 'order' => $place + 1 ) );
 	if ( count( $result ) < 1 ) {
 		return false;
@@ -73,13 +73,14 @@ function get_next_chapter( $post = 0 ) {
  * @return array Ordered list of chapters and sections, with enough information to create links.
  */
 function build_table_of_contents( $vol = 1 ) {
+	// The book has a few dozen chapters, so the meta lookup is cheap.
 	$posts = get_posts(
 		array(
-			'orderby' => 'meta_value_num',
-			'meta_key' => 'mb_chapter',
-			'meta_query' => array(
+			'orderby'        => 'meta_value_num',
+			'meta_key'       => 'mb_chapter', // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
+			'meta_query'     => array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
 				array(
-					'key' => 'mb_vol',
+					'key'   => 'mb_vol',
 					'value' => $vol,
 				),
 			),
@@ -90,9 +91,9 @@ function build_table_of_contents( $vol = 1 ) {
 	$chapters = array();
 	foreach ( $posts as $p ) {
 		$chapters[ $p->ID ] = array(
-			'ID' => $p->ID,
-			'title' => get_the_title( $p->ID ),
-			'part' => (int) get_post_meta( $p->ID, 'mb_part', true ),
+			'ID'      => $p->ID,
+			'title'   => get_the_title( $p->ID ),
+			'part'    => (int) get_post_meta( $p->ID, 'mb_part', true ),
 			'chapter' => (int) get_post_meta( $p->ID, 'mb_chapter', true ),
 		);
 	}
@@ -109,11 +110,11 @@ function build_table_of_contents( $vol = 1 ) {
 	);
 
 	$order_num = 0;
-	$toc = array();
+	$toc       = array();
 	foreach ( $chapters as $chapter ) {
-		$chapter['order'] = $order_num;
+		$chapter['order']      = $order_num;
 		$toc[ $chapter['ID'] ] = $chapter;
-		$order_num++;
+		++$order_num;
 	}
 
 	return $toc;

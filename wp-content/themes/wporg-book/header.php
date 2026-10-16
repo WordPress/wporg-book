@@ -5,7 +5,7 @@
  * This is the template that displays all of the <head> section and everything up until <div id="content">
  */
 
-$volume = (int) get_post_meta( get_the_ID(), 'mb_vol', true );
+$volume        = (int) get_post_meta( get_the_ID(), 'mb_vol', true );
 $menu_location = 'vol-2-primary';
 if ( 1 === $volume ) {
 	$menu_location = 'primary';
@@ -35,12 +35,14 @@ if ( 1 === $volume ) {
 			<?php endif; ?>
 
 			<nav id="site-navigation" class="main-navigation" role="navigation">
-				<?php wp_nav_menu(
+				<?php
+				wp_nav_menu(
 					array(
 						'theme_location' => $menu_location,
-						'menu_id' => 'primary-menu',
+						'menu_id'        => 'primary-menu',
 					)
-				); ?>
+				);
+				?>
 			</nav><!-- #site-navigation -->
 		</div><!-- .site-branding -->
 	</header><!-- #masthead -->
