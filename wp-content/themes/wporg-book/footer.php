@@ -17,6 +17,7 @@
 			<span class="dashicons dashicons-wordpress"></span>
 			<?php
 			printf(
+				/* translators: https://github.com/WordPress/library */
 				wp_kses_post( __( 'Copyright GPLv2 and Creative Commons Sharealike. <a href="%s">Help make this book better</a>.', 'wporg-book' ) ),
 				'https://github.com/WordPress/library'
 			);
