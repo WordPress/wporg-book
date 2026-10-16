@@ -61,8 +61,8 @@ function register_book_meta() {
 		'mb_vol',
 		array(
 			'show_in_rest' => true,
-			'single' => true,
-			'type' => 'integer',
+			'single'       => true,
+			'type'         => 'integer',
 		)
 	);
 	register_post_meta(
@@ -70,8 +70,8 @@ function register_book_meta() {
 		'mb_part',
 		array(
 			'show_in_rest' => true,
-			'single' => true,
-			'type' => 'integer',
+			'single'       => true,
+			'type'         => 'integer',
 		)
 	);
 	register_post_meta(
@@ -79,8 +79,8 @@ function register_book_meta() {
 		'mb_chapter',
 		array(
 			'show_in_rest' => true,
-			'single' => true,
-			'type' => 'integer',
+			'single'       => true,
+			'type'         => 'integer',
 		)
 	);
 
@@ -104,8 +104,8 @@ function add_posts_columns( $columns ) {
 function handle_custom_column( $column, $post_id ) {
 	switch ( $column ) {
 		case 'part-chapter':
-			$volume = get_post_meta( $post_id, 'mb_vol', true );
-			$part = get_post_meta( $post_id, 'mb_part', true );
+			$volume  = get_post_meta( $post_id, 'mb_vol', true );
+			$part    = get_post_meta( $post_id, 'mb_part', true );
 			$chapter = get_post_meta( $post_id, 'mb_chapter', true );
 			printf(
 				'Vol %1$s<br /> Part %2$s, Ch %3$s',
@@ -122,7 +122,7 @@ function handle_custom_column( $column, $post_id ) {
  */
 function book_contents_shortcode( $atts ) {
 	$volume = $atts['vol'] ?? 1;
-	$toc = build_table_of_contents( $volume );
+	$toc    = build_table_of_contents( $volume );
 	$output = '';
 
 	while ( count( $toc ) > 0 ) { // phpcs:ignore

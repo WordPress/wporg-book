@@ -3,7 +3,7 @@
  * Template part for displaying posts (chapters).
  */
 
-$part = (int) get_post_meta( get_the_ID(), 'mb_part', true );
+$part    = (int) get_post_meta( get_the_ID(), 'mb_part', true );
 $chapter = (int) get_post_meta( get_the_ID(), 'mb_chapter', true );
 ?>
 

@@ -12,7 +12,7 @@ get_header( 'home' );
 
 while ( have_posts() ) :
 	the_post();
-	$src = '';
+	$src      = '';
 	$image_id = get_post_thumbnail_id( $post );
 	if ( $image_id ) {
 		$image = wp_get_attachment_image_src( $image_id, 'full' );
@@ -28,6 +28,7 @@ while ( have_posts() ) :
 		</div><!-- .entry-content -->
 	</div>
 
-<?php endwhile; // End of the loop.
+	<?php
+endwhile; // End of the loop.
 get_sidebar();
 get_footer();

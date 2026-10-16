@@ -42,9 +42,9 @@ function setup_theme() {
 	// This theme uses wp_nav_menu() in one location.
 	register_nav_menus(
 		array(
-			'home' => esc_html__( 'Vol 1 Landing', 'wporg-book' ),
-			'primary' => esc_html__( 'Vol 1 Primary', 'wporg-book' ),
-			'vol-2-home' => esc_html__( 'Vol 2 Landing', 'wporg-book' ),
+			'home'          => esc_html__( 'Vol 1 Landing', 'wporg-book' ),
+			'primary'       => esc_html__( 'Vol 1 Primary', 'wporg-book' ),
+			'vol-2-home'    => esc_html__( 'Vol 2 Landing', 'wporg-book' ),
 			'vol-2-primary' => esc_html__( 'Vol 2 Primary', 'wporg-book' ),
 		)
 	);
@@ -111,7 +111,8 @@ function enqueue_editor_assets() {
 		'wporg-book-editor-script',
 		get_template_directory_uri() . '/js/editor.js',
 		array( 'wp-element', 'wp-data', 'wp-core-data', 'wp-components', 'wp-plugins', 'wp-edit-post' ),
-		filemtime( __DIR__ . '/js/editor.js' )
+		filemtime( __DIR__ . '/js/editor.js' ),
+		false
 	);
 }
 
