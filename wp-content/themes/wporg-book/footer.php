@@ -5,10 +5,7 @@
  * Contains the closing of the #content div and all content after.
  */
 
-$book_github_url = 'https://github.com/WordPress/wp20-book';
-if ( 1 === (int) get_post_meta( get_the_ID(), 'mb_vol', true ) ) {
-	$book_github_url = 'https://github.com/WordPress/book/';
-}
+$book_github_url = 'https://github.com/WordPress/library';
 ?>
 
 	</div><!-- #content -->
