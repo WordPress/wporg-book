@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "64a7c38f3a71a1205d62bfd458ebc8f0",
+    "content-hash": "57b20b0b007cbd17ca21fb36cbea3dfb",
     "packages": [],
     "packages-dev": [
         {
@@ -950,7 +950,6 @@
     "aliases": [],
     "minimum-stability": "alpha",
     "stability-flags": {
-        "phpcompatibility/phpcompatibility-wp": 15,
         "wporg/wporg-mu-plugins": 20,
         "wporg/wporg-repo-tools": 20
     },

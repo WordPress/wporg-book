@@ -48,12 +48,9 @@
 		}
 	],
 	"require-dev": {
-        "composer/installers": "^2.0",
-		"dealerdirect/phpcodesniffer-composer-installer": "^1.0",
-		"phpcompatibility/phpcompatibility-wp": "^3.0@alpha",
+		"composer/installers": "^2.0",
 		"wporg/wporg-repo-tools": "dev-trunk",
-		"wporg/wporg-mu-plugins": "dev-build",
-        "wp-coding-standards/wpcs": "^3.4.1"
+		"wporg/wporg-mu-plugins": "dev-build"
 	},
 	"scripts": {
 		"format": "phpcbf -p",
