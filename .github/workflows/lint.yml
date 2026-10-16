@@ -27,7 +27,7 @@ jobs:
                   COMPOSER_AUTH: '{"github-oauth": {"github.com": "${{ secrets.GITHUB_TOKEN }}"}}'
               run: |
                   npm install
-                  composer install || composer update wporg/*
+                  composer install || composer update wporg/wporg-mu-plugins
                   TEXTDOMAIN=wporg-book composer exec update-configs
 
             - name: Lint CSS
