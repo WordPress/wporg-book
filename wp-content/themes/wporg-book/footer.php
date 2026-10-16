@@ -5,10 +5,6 @@
  * Contains the closing of the #content div and all content after.
  */
 
-$book_github_url = 'https://github.com/WordPress/wp20-book';
-if ( 1 === (int) get_post_meta( get_the_ID(), 'mb_vol', true ) ) {
-	$book_github_url = 'https://github.com/WordPress/book/';
-}
 ?>
 
 	</div><!-- #content -->
@@ -20,10 +16,10 @@ if ( 1 === (int) get_post_meta( get_the_ID(), 'mb_vol', true ) ) {
 			</div>
 			<span class="dashicons dashicons-wordpress"></span>
 			<?php
-			// phpcs:disable
 			printf(
-				__( 'Copyright GPLv2 and Creative Commons Sharealike. <a href="%s">Help make this book better</a>.', 'wporg-book' ),
-				$book_github_url
+				/* translators: https://github.com/WordPress/library */
+				wp_kses_post( __( 'Copyright GPLv2 and Creative Commons Sharealike. <a href="%s">Help make this book better</a>.', 'wporg-book' ) ),
+				'https://github.com/WordPress/library'
 			);
 			// phpcs:enable
 			?>
