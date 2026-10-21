@@ -6,7 +6,7 @@
   "license": "GPL-2.0+",
   "scripts": {
     "wp-env": "wp-env",
-    "build": "postcss wp-content/themes/wporg-book/sass/style.scss --output=wp-content/themes/wporg-book/style.css",
+    "build": "postcss wp-content/themes/wporg-book/sass/style.scss --output=wp-content/themes/wporg-book/style.css --no-map",
     "start": "postcss wp-content/themes/wporg-book/sass/style.scss --output=wp-content/themes/wporg-book/style.css --watch",
     "lint:css": "stylelint wp-content/themes/wporg-book/sass/*",
     "lint:php": "composer run lint wp-content/themes/wporg-book"
