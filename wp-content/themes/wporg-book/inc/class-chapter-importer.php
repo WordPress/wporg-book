@@ -54,6 +54,11 @@ class Chapter_Importer extends Importer {
 	const SOURCE_BASE = 'https://raw.githubusercontent.com/WordPress/library/';
 
 	/**
+	 * Option holding the trunk commit the scheduled import last checked.
+	 */
+	const TRUNK_OPTION = 'wporg_book_import_trunk';
+
+	/**
 	 * Bump when the Markdown-to-HTML transform changes, so every chapter is
 	 * converted again even if its file on GitHub has not changed.
 	 */
@@ -67,11 +72,18 @@ class Chapter_Importer extends Importer {
 	protected $transform_meta_key = 'wporg_book_transform_version';
 
 	/**
+	 * Commit to download trunk's files at, while the scheduled import runs.
+	 *
+	 * @var string
+	 */
+	protected $commit = '';
+
+	/**
 	 * Hooks the importer up.
 	 */
 	public function init() {
 		add_action( 'init', array( $this, 'schedule' ) );
-		add_action( self::CRON_HOOK, array( $this, 'run' ) );
+		add_action( self::CRON_HOOK, array( $this, 'scheduled_run' ) );
 		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_editor_warning' ) );
 		add_action( 'edit_form_top', array( $this, 'render_editor_warning' ) );
 
@@ -126,6 +138,73 @@ class Chapter_Importer extends Importer {
 	}
 
 	/**
+	 * Runs the hourly import, unless nothing on trunk changed since the last one.
+	 */
+	public function scheduled_run() {
+		$sha = $this->get_trunk_commit();
+
+		// The transform version is part of it, so a bump converts every chapter again.
+		$head = $sha ? $sha . ':' . self::TRANSFORM_VERSION : '';
+		if ( $head && get_option( self::TRUNK_OPTION ) === $head ) {
+			return;
+		}
+
+		$this->commit = $sha;
+		$counts       = $this->run();
+		$this->commit = '';
+
+		if ( $head && ! is_wp_error( $counts ) && ! $counts['failed'] ) {
+			update_option( self::TRUNK_OPTION, $head, false );
+		}
+	}
+
+	/**
+	 * SHA of the latest commit on the library repo's trunk.
+	 *
+	 * @return string SHA, or empty if unknown or the manifest is filtered away
+	 *                from trunk.
+	 */
+	protected function get_trunk_commit() {
+		if ( self::SOURCE_BASE . 'trunk/manifest.json' !== $this->get_manifest_url() ) {
+			return '';
+		}
+
+		$response = wp_safe_remote_get(
+			'https://api.github.com/repos/WordPress/library/commits/trunk',
+			array( 'headers' => array( 'Accept' => 'application/vnd.github.sha' ) )
+		);
+		if ( is_wp_error( $response ) || 200 !== wp_remote_retrieve_response_code( $response ) ) {
+			return '';
+		}
+
+		$sha = trim( wp_remote_retrieve_body( $response ) );
+		if ( ! preg_match( '/^[0-9a-f]{40}$/', $sha ) ) {
+			return '';
+		}
+
+		return $sha;
+	}
+
+	/**
+	 * URL to download a library file from.
+	 *
+	 * During the scheduled import, trunk files are fetched at the commit it
+	 * checked, since raw.githubusercontent.com can serve a branch's files
+	 * stale for 5 minutes after a push. Posts keep the trunk URL.
+	 *
+	 * @param string $url URL of a file in the library repo.
+	 * @return string
+	 */
+	protected function get_download_url( $url ) {
+		$trunk = self::SOURCE_BASE . 'trunk/';
+		if ( ! $this->commit || 0 !== strpos( $url, $trunk ) ) {
+			return $url;
+		}
+
+		return self::SOURCE_BASE . $this->commit . '/' . substr( $url, strlen( $trunk ) );
+	}
+
+	/**
 	 * Reads the manifest, then imports the chapters it lists.
 	 *
 	 * Stops before touching any chapter if the manifest can't be read or
@@ -135,6 +214,9 @@ class Chapter_Importer extends Importer {
 	 * @return array|WP_Error Counts of updated, unchanged, failed and skipped chapters.
 	 */
 	public function run( $force = false ) {
+		// Whatever this imports, the next scheduled run shouldn't skip on the last commit.
+		delete_option( self::TRUNK_OPTION );
+
 		$chapters = $this->resolve_manifest();
 		if ( is_wp_error( $chapters ) ) {
 			$this->log( $chapters->get_error_message(), 'warning' );
@@ -182,7 +264,7 @@ class Chapter_Importer extends Importer {
 	 *                        absolute) and 'missing' (slugs with no post).
 	 */
 	public function resolve_manifest() {
-		$response = wp_safe_remote_get( $this->get_manifest_url() );
+		$response = wp_safe_remote_get( $this->get_download_url( $this->get_manifest_url() ) );
 		if ( is_wp_error( $response ) ) {
 			return $response;
 		}
@@ -379,7 +461,7 @@ class Chapter_Importer extends Importer {
 			$args['headers']['If-None-Match'] = $etag;
 		}
 
-		$response = wp_safe_remote_get( $source, $args );
+		$response = wp_safe_remote_get( $this->get_download_url( $source ), $args );
 		if ( is_wp_error( $response ) ) {
 			return $response;
 		}
