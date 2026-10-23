@@ -54,6 +54,21 @@ class Chapter_Importer extends Importer {
 	const SOURCE_BASE = 'https://raw.githubusercontent.com/WordPress/library/';
 
 	/**
+	 * GitHub API endpoint for the latest commit on the library repo's trunk.
+	 */
+	const TRUNK_COMMIT_URL = 'https://api.github.com/repos/WordPress/library/commits/trunk';
+
+	/**
+	 * Option holding the trunk commit the scheduled import last checked.
+	 */
+	const TRUNK_OPTION = 'wporg_book_import_trunk';
+
+	/**
+	 * Seconds raw.githubusercontent.com may keep serving a file after a push.
+	 */
+	const RAW_CACHE_TTL = 300;
+
+	/**
 	 * Bump when the Markdown-to-HTML transform changes, so every chapter is
 	 * converted again even if its file on GitHub has not changed.
 	 */
@@ -71,7 +86,7 @@ class Chapter_Importer extends Importer {
 	 */
 	public function init() {
 		add_action( 'init', array( $this, 'schedule' ) );
-		add_action( self::CRON_HOOK, array( $this, 'run' ) );
+		add_action( self::CRON_HOOK, array( $this, 'scheduled_run' ) );
 		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_editor_warning' ) );
 		add_action( 'edit_form_top', array( $this, 'render_editor_warning' ) );
 
@@ -123,6 +138,71 @@ class Chapter_Importer extends Importer {
 		} elseif ( ! get_option( self::ENABLED_OPTION ) && $next ) {
 			wp_clear_scheduled_hook( self::CRON_HOOK );
 		}
+	}
+
+	/**
+	 * Runs the hourly import, unless nothing on trunk changed since the last one.
+	 *
+	 * Asking GitHub for trunk's latest commit saves fetching every chapter.
+	 * A commit only counts as imported after a clean run that started once
+	 * raw.githubusercontent.com's cache had expired, so a stale copy of a
+	 * file served right after a push can't hide the change for good. Without
+	 * an answer from GitHub, it imports as usual.
+	 */
+	public function scheduled_run() {
+		$head = $this->get_trunk_head();
+		$last = get_option( self::TRUNK_OPTION );
+
+		if ( ! is_array( $last ) || empty( $last['head'] ) || $last['head'] !== $head ) {
+			$last = array(
+				'head'    => $head,
+				'seen'    => time(),
+				'settled' => false,
+			);
+		}
+
+		if ( $head && $last['settled'] ) {
+			return;
+		}
+
+		$started = time();
+		$counts  = $this->run();
+
+		if ( $head ) {
+			$last['settled'] = ! is_wp_error( $counts ) && ! $counts['failed'] && ! $counts['skipped']
+				&& $started - $last['seen'] >= self::RAW_CACHE_TTL;
+			update_option( self::TRUNK_OPTION, $last, false );
+		}
+	}
+
+	/**
+	 * Trunk's latest commit, together with the transform version.
+	 *
+	 * The transform version is part of it so a bump converts every chapter
+	 * again without waiting for a commit.
+	 *
+	 * @return string Commit SHA and transform version, or empty if unknown or
+	 *                the manifest is filtered away from trunk.
+	 */
+	protected function get_trunk_head() {
+		if ( self::SOURCE_BASE . 'trunk/manifest.json' !== $this->get_manifest_url() ) {
+			return '';
+		}
+
+		$response = wp_safe_remote_get(
+			self::TRUNK_COMMIT_URL,
+			array( 'headers' => array( 'Accept' => 'application/vnd.github.sha' ) )
+		);
+		if ( is_wp_error( $response ) || 200 !== wp_remote_retrieve_response_code( $response ) ) {
+			return '';
+		}
+
+		$sha = trim( wp_remote_retrieve_body( $response ) );
+		if ( ! preg_match( '/^[0-9a-f]{40}$/', $sha ) ) {
+			return '';
+		}
+
+		return $sha . ':' . self::TRANSFORM_VERSION;
 	}
 
 	/**
