@@ -142,12 +142,6 @@ class Chapter_Importer extends Importer {
 
 	/**
 	 * Runs the hourly import, unless nothing on trunk changed since the last one.
-	 *
-	 * Asking GitHub for trunk's latest commit saves fetching every chapter.
-	 * A commit only counts as imported after a clean run that started once
-	 * raw.githubusercontent.com's cache had expired, so a stale copy of a
-	 * file served right after a push can't hide the change for good. Without
-	 * an answer from GitHub, it imports as usual.
 	 */
 	public function scheduled_run() {
 		$head = $this->get_trunk_head();
