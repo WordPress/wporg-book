@@ -54,19 +54,9 @@ class Chapter_Importer extends Importer {
 	const SOURCE_BASE = 'https://raw.githubusercontent.com/WordPress/library/';
 
 	/**
-	 * GitHub API endpoint for the latest commit on the library repo's trunk.
-	 */
-	const TRUNK_COMMIT_URL = 'https://api.github.com/repos/WordPress/library/commits/trunk';
-
-	/**
 	 * Option holding the trunk commit the scheduled import last checked.
 	 */
 	const TRUNK_OPTION = 'wporg_book_import_trunk';
-
-	/**
-	 * Seconds raw.githubusercontent.com may keep serving a file after a push.
-	 */
-	const RAW_CACHE_TTL = 300;
 
 	/**
 	 * Bump when the Markdown-to-HTML transform changes, so every chapter is
@@ -163,8 +153,9 @@ class Chapter_Importer extends Importer {
 		$counts  = $this->run();
 
 		if ( $head ) {
+			// raw.githubusercontent.com can serve a stale file for 5 minutes after a push.
 			$last['settled'] = ! is_wp_error( $counts ) && ! $counts['failed'] && ! $counts['skipped']
-				&& $started - $last['seen'] >= self::RAW_CACHE_TTL;
+				&& $started - $last['seen'] >= 5 * MINUTE_IN_SECONDS;
 			update_option( self::TRUNK_OPTION, $last, false );
 		}
 	}
@@ -184,7 +175,7 @@ class Chapter_Importer extends Importer {
 		}
 
 		$response = wp_safe_remote_get(
-			self::TRUNK_COMMIT_URL,
+			'https://api.github.com/repos/WordPress/library/commits/trunk',
 			array( 'headers' => array( 'Accept' => 'application/vnd.github.sha' ) )
 		);
 		if ( is_wp_error( $response ) || 200 !== wp_remote_retrieve_response_code( $response ) ) {
