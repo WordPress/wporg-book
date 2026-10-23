@@ -47,7 +47,7 @@ wp book import                                 # imports once
 wp option update wporg_book_import_enabled 1   # then imports hourly
 ```
 
-The hourly import first asks the GitHub API for trunk's latest commit and skips fetching the chapters when it's one already imported. `wp book import` always checks every chapter.
+The hourly import first asks the GitHub API for trunk's latest commit, and skips the run when that commit was already imported with no chapter failing. Otherwise it downloads the manifest and chapters at that commit. If the API doesn't answer, it imports as usual. `wp book import` always checks every chapter, and so does the hourly import after it, or after any import from a branch.
 
 `wp book import --force` converts every chapter again, which is needed after changing the conversion code (or bump `Chapter_Importer::TRANSFORM_VERSION`).
 

@@ -72,6 +72,13 @@ class Chapter_Importer extends Importer {
 	protected $transform_meta_key = 'wporg_book_transform_version';
 
 	/**
+	 * Commit to download trunk's files at, while the scheduled import runs.
+	 *
+	 * @var string
+	 */
+	protected $commit = '';
+
+	/**
 	 * Hooks the importer up.
 	 */
 	public function init() {
@@ -134,42 +141,30 @@ class Chapter_Importer extends Importer {
 	 * Runs the hourly import, unless nothing on trunk changed since the last one.
 	 */
 	public function scheduled_run() {
-		$head = $this->get_trunk_head();
-		$last = get_option( self::TRUNK_OPTION );
+		$sha = $this->get_trunk_commit();
 
-		if ( ! is_array( $last ) || empty( $last['head'] ) || $last['head'] !== $head ) {
-			$last = array(
-				'head'    => $head,
-				'seen'    => time(),
-				'settled' => false,
-			);
-		}
-
-		if ( $head && $last['settled'] ) {
+		// The transform version is part of it, so a bump converts every chapter again.
+		$head = $sha ? $sha . ':' . self::TRANSFORM_VERSION : '';
+		if ( $head && get_option( self::TRUNK_OPTION ) === $head ) {
 			return;
 		}
 
-		$started = time();
-		$counts  = $this->run();
+		$this->commit = $sha;
+		$counts       = $this->run();
+		$this->commit = '';
 
-		if ( $head ) {
-			// raw.githubusercontent.com can serve a stale file for 5 minutes after a push.
-			$last['settled'] = ! is_wp_error( $counts ) && ! $counts['failed'] && ! $counts['skipped']
-				&& $started - $last['seen'] >= 5 * MINUTE_IN_SECONDS;
-			update_option( self::TRUNK_OPTION, $last, false );
+		if ( $head && ! is_wp_error( $counts ) && ! $counts['failed'] ) {
+			update_option( self::TRUNK_OPTION, $head, false );
 		}
 	}
 
 	/**
-	 * Trunk's latest commit, together with the transform version.
+	 * SHA of the latest commit on the library repo's trunk.
 	 *
-	 * The transform version is part of it so a bump converts every chapter
-	 * again without waiting for a commit.
-	 *
-	 * @return string Commit SHA and transform version, or empty if unknown or
-	 *                the manifest is filtered away from trunk.
+	 * @return string SHA, or empty if unknown or the manifest is filtered away
+	 *                from trunk.
 	 */
-	protected function get_trunk_head() {
+	protected function get_trunk_commit() {
 		if ( self::SOURCE_BASE . 'trunk/manifest.json' !== $this->get_manifest_url() ) {
 			return '';
 		}
@@ -187,7 +182,26 @@ class Chapter_Importer extends Importer {
 			return '';
 		}
 
-		return $sha . ':' . self::TRANSFORM_VERSION;
+		return $sha;
+	}
+
+	/**
+	 * URL to download a library file from.
+	 *
+	 * During the scheduled import, trunk files are fetched at the commit it
+	 * checked, since raw.githubusercontent.com can serve a branch's files
+	 * stale for 5 minutes after a push. Posts keep the trunk URL.
+	 *
+	 * @param string $url URL of a file in the library repo.
+	 * @return string
+	 */
+	protected function get_download_url( $url ) {
+		$trunk = self::SOURCE_BASE . 'trunk/';
+		if ( ! $this->commit || 0 !== strpos( $url, $trunk ) ) {
+			return $url;
+		}
+
+		return self::SOURCE_BASE . $this->commit . '/' . substr( $url, strlen( $trunk ) );
 	}
 
 	/**
@@ -200,6 +214,9 @@ class Chapter_Importer extends Importer {
 	 * @return array|WP_Error Counts of updated, unchanged, failed and skipped chapters.
 	 */
 	public function run( $force = false ) {
+		// Whatever this imports, the next scheduled run shouldn't skip on the last commit.
+		delete_option( self::TRUNK_OPTION );
+
 		$chapters = $this->resolve_manifest();
 		if ( is_wp_error( $chapters ) ) {
 			$this->log( $chapters->get_error_message(), 'warning' );
@@ -247,7 +264,7 @@ class Chapter_Importer extends Importer {
 	 *                        absolute) and 'missing' (slugs with no post).
 	 */
 	public function resolve_manifest() {
-		$response = wp_safe_remote_get( $this->get_manifest_url() );
+		$response = wp_safe_remote_get( $this->get_download_url( $this->get_manifest_url() ) );
 		if ( is_wp_error( $response ) ) {
 			return $response;
 		}
@@ -444,7 +461,7 @@ class Chapter_Importer extends Importer {
 			$args['headers']['If-None-Match'] = $etag;
 		}
 
-		$response = wp_safe_remote_get( $source, $args );
+		$response = wp_safe_remote_get( $this->get_download_url( $source ), $args );
 		if ( is_wp_error( $response ) ) {
 			return $response;
 		}
